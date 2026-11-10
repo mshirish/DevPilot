@@ -99,7 +99,8 @@ class DemoChatLimitsIntegrationTests {
                 .andExpect(status().isTooManyRequests())
                 .andExpect(content().contentTypeCompatibleWith(MediaType.APPLICATION_JSON))
                 .andExpect(jsonPath("$.message").value(
-                        "The demo has hit its daily question limit. Please come back tomorrow."));
+                        "The demo has hit its daily question limit. Please come back tomorrow."))
+                .andExpect(jsonPath("$.code").doesNotExist());
 
         // Once the guest has used their own question, the per-visitor cap applies first
         chatMessageRepository.save(ChatMessage.builder()
@@ -109,7 +110,8 @@ class DemoChatLimitsIntegrationTests {
                 .andExpect(status().isTooManyRequests())
                 .andExpect(content().contentTypeCompatibleWith(MediaType.APPLICATION_JSON))
                 .andExpect(jsonPath("$.message").value(
-                        "You've reached the demo limit of 1 questions. Thanks for trying DevPilot!"));
+                        "You've reached the demo limit of 1 questions. Thanks for trying DevPilot!"))
+                .andExpect(jsonPath("$.code").value("DEMO_QUESTION_LIMIT"));
     }
 
     @Test

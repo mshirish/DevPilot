@@ -5,6 +5,7 @@ import { useEffect, useRef, useState } from "react";
 import { ArrowLeft } from "lucide-react";
 
 import { ChatComposer } from "@/components/chat/chat-composer";
+import { DemoLimitNotice } from "@/components/chat/demo-limit-notice";
 import { ChatMessages } from "@/components/chat/chat-messages";
 import { ChatSidebar } from "@/components/chat/chat-sidebar";
 import { IndexingState } from "@/components/chat/indexing-state";
@@ -15,6 +16,7 @@ import {
   useChatMessages,
   useChatSessions,
   useCreateChatSession,
+  useDemoQuestionLimit,
   useStreamChat,
 } from "@/hooks/use-chat";
 import { useIndexStatus, useRepository } from "@/hooks/use-repos";
@@ -43,6 +45,7 @@ export function ChatView({ repoId }: { repoId: string }) {
 
   const messagesQuery = useChatMessages(sessionId);
   const { send, stop, streaming, streamText } = useStreamChat(sessionId);
+  const demoLimitMessage = useDemoQuestionLimit();
 
   useEffect(() => {
     if (!ready || sessionsQuery.isLoading) return;
@@ -136,12 +139,16 @@ export function ChatView({ repoId }: { repoId: string }) {
                 streamText={streamText}
                 isLoading={messagesQuery.isLoading}
               />
-              <ChatComposer
-                disabled={!sessionId}
-                streaming={streaming}
-                onSend={send}
-                onStop={stop}
-              />
+              {demoLimitMessage ? (
+                <DemoLimitNotice message={demoLimitMessage} />
+              ) : (
+                <ChatComposer
+                  disabled={!sessionId}
+                  streaming={streaming}
+                  onSend={send}
+                  onStop={stop}
+                />
+              )}
             </>
           )}
         </section>

@@ -1,5 +1,6 @@
 package devPilot.backend.exceptions;
 import java.time.Instant;
+import java.util.LinkedHashMap;
 import java.util.Map;
 
 import org.springframework.http.HttpStatus;
@@ -40,7 +41,7 @@ public class GlobalExceptionHandler {
 
     @ExceptionHandler(TooManyRequestsException.class)
     ResponseEntity<Map<String, Object>> handleTooManyRequests(TooManyRequestsException ex) {
-        return error(HttpStatus.TOO_MANY_REQUESTS, ex.getMessage());
+        return error(HttpStatus.TOO_MANY_REQUESTS, ex.getMessage(), ex.getCode());
     }
 
     @ExceptionHandler(MethodArgumentNotValidException.class)
@@ -78,10 +79,19 @@ public class GlobalExceptionHandler {
     }
 
     private ResponseEntity<Map<String, Object>> error(HttpStatus status, String message) {
-        return ResponseEntity.status(status).body(Map.of(
-                "status", status.value(),
-                "error", status.getReasonPhrase(),
-                "message", message,
-                "timestamp", Instant.now().toString()));
+        return error(status, message, null);
+    }
+
+    /** {@code code} (optional) lets the client react to a specific case, e.g. DEMO_QUESTION_LIMIT. */
+    private ResponseEntity<Map<String, Object>> error(HttpStatus status, String message, String code) {
+        Map<String, Object> body = new LinkedHashMap<>();
+        body.put("status", status.value());
+        body.put("error", status.getReasonPhrase());
+        body.put("message", message);
+        if (code != null) {
+            body.put("code", code);
+        }
+        body.put("timestamp", Instant.now().toString());
+        return ResponseEntity.status(status).body(body);
     }
 }

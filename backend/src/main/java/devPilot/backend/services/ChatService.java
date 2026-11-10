@@ -147,7 +147,8 @@ public class ChatService {
         if (mine >= demoMode.maxMessagesPerUser()) {
             throw new TooManyRequestsException(
                     "You've reached the demo limit of " + demoMode.maxMessagesPerUser()
-                            + " questions. Thanks for trying DevPilot!");
+                            + " questions. Thanks for trying DevPilot!",
+                    TooManyRequestsException.DEMO_QUESTION_LIMIT);
         }
         Instant startOfDay = LocalDate.now(ZoneOffset.UTC).atStartOfDay(ZoneOffset.UTC).toInstant();
         long today = chatMessageRepository.countByRoleAndCreatedAtGreaterThanEqual(MessageRole.USER, startOfDay);
