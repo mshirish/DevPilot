@@ -55,15 +55,18 @@ export function useStreamChat(sessionId: string | null) {
   const [streamText, setStreamText] = useState("");
   const abortRef = useRef<AbortController | null>(null);
 
+  /** Sends a question. Resolves false if it failed and was removed, so the caller can offer a retry. */
   const send = useCallback(
-    async (content: string) => {
-      if (!sessionId || !content.trim() || streaming) return;
+    async (content: string): Promise<boolean> => {
+      if (!sessionId || !content.trim() || streaming) return false;
 
       abortRef.current?.abort();
       const controller = new AbortController();
       abortRef.current = controller;
 
       const optimisticId = `temp-${Date.now()}`;
+      // Set once the server has saved the question (user_message event)
+      let savedId: string | null = null;
       const optimistic: ChatMessage = {
         id: optimisticId,
         role: "USER",
@@ -84,6 +87,7 @@ export function useStreamChat(sessionId: string | null) {
         await streamChatMessage(sessionId, content.trim(), {
           signal: controller.signal,
           onUserMessage: (message) => {
+            savedId = message.id;
             queryClient.setQueryData<ChatMessage[]>(
               queryKeys.chat.messages(sessionId),
               (prev) => [
@@ -103,18 +107,24 @@ export function useStreamChat(sessionId: string | null) {
             setStreamText("");
           },
         });
+        return true;
       } catch (err) {
-        if ((err as Error).name === "AbortError") return;
+        // The user pressed Stop: the question was sent, keep it
+        if ((err as Error).name === "AbortError") return true;
         toast.add({
           title: "Message failed",
           description: err instanceof Error ? err.message : "Unknown error",
           type: "error",
         });
+        // The server removes a question it couldn't answer; drop it from the thread too
+        // (both the optimistic copy and the saved one, if it already arrived)
         queryClient.setQueryData<ChatMessage[]>(
           queryKeys.chat.messages(sessionId),
-          (prev) => (prev ?? []).filter((m) => m.id !== optimisticId)
+          (prev) =>
+            (prev ?? []).filter((m) => m.id !== optimisticId && m.id !== savedId)
         );
         setStreamText("");
+        return false;
       } finally {
         setStreaming(false);
       }

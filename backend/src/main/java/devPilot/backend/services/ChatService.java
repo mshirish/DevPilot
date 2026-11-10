@@ -111,20 +111,28 @@ public class ChatService {
                 .content(userContent)
                 .build());
 
-        // 3. RAG retrieval — find code chunks similar to the question
-        var retrievedContext = codeContextRetriever.retrieve(repo.getId(), userContent);
+        try {
+            // 3. RAG retrieval — find code chunks similar to the question (embeds it: can be rate-limited)
+            var retrievedContext = codeContextRetriever.retrieve(repo.getId(), userContent);
 
-        // 4. Build LLM prompts from retrieved context + question
-        String systemPrompt = chatPromptBuilder.systemPrompt(repo.getFullName());
-        String userPrompt = chatPromptBuilder.userPrompt(retrievedContext.contextText(), userContent);
+            // 4. Build LLM prompts from retrieved context + question
+            String systemPrompt = chatPromptBuilder.systemPrompt(repo.getFullName());
+            String userPrompt = chatPromptBuilder.userPrompt(retrievedContext.contextText(), userContent);
 
-        // 5. Stream OpenAI response to the client (SSE)
-        return chatStreamHandler.stream(
-                session.getId(),
-                toMessageResponse(userMessage),
-                retrievedContext.citations(),
-                systemPrompt,
-                userPrompt);
+            // 5. Stream the LLM response to the client (SSE). If it fails, the handler removes
+            //    the question itself.
+            return chatStreamHandler.stream(
+                    session.getId(),
+                    toMessageResponse(userMessage),
+                    retrievedContext.citations(),
+                    systemPrompt,
+                    userPrompt);
+        } catch (RuntimeException ex) {
+            // Failed before an answer could start: don't leave the question unanswered in the
+            // thread or counted toward the visitor's question cap
+            chatMessageRepository.deleteById(userMessage.getId());
+            throw ex;
+        }
     }
 
     /**

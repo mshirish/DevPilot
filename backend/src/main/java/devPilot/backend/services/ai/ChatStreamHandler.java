@@ -65,13 +65,15 @@ public class ChatStreamHandler {
                     .content()
                     .subscribe(
                             token -> appendToken(emitter, fullReply, token),
-                            err -> failStream(emitter, err),
+                            err -> failStream(emitter, err, savedUserMessage.id()),
                             () -> completeStream(emitter, sessionId, fullReply, citations));
 
             // Stop generating (and paying for) tokens if the client disconnects or the stream times out
             emitter.onTimeout(subscription::dispose);
             emitter.onError(err -> subscription.dispose());
         } catch (Exception ex) {
+            // The request never started (or the client already left): no answer will be saved
+            discardUserMessage(savedUserMessage.id());
             emitter.completeWithError(ex);
         }
 
@@ -89,7 +91,10 @@ public class ChatStreamHandler {
         }
     }
 
-    private void failStream(SseEmitter emitter, Throwable err) {
+    private void failStream(SseEmitter emitter, Throwable err, UUID userMessageId) {
+        // No answer will be saved: drop the question so it doesn't sit unanswered in the thread
+        // or count toward the visitor's question cap. The client removes it and offers a retry.
+        discardUserMessage(userMessageId);
         String message;
         if (AiErrors.isRateLimited(err)) {
             log.warn("Chat stream rate-limited by AI provider: {}", err.getMessage());
@@ -107,6 +112,14 @@ public class ChatStreamHandler {
         } catch (Exception sendFailed) {
             // Client already disconnected (e.g. user pressed Stop)
             emitter.completeWithError(sendFailed);
+        }
+    }
+
+    private void discardUserMessage(UUID userMessageId) {
+        try {
+            chatMessageRepository.deleteById(userMessageId);
+        } catch (Exception ex) {
+            log.warn("Could not remove unanswered message {}: {}", userMessageId, ex.getMessage());
         }
     }
 
