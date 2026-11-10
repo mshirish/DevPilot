@@ -55,12 +55,11 @@ export function ChatView({ repoId }: { repoId: string }) {
       return;
     }
 
+    // Try once per visit. Resetting the ref on error re-ran this effect on every render
+    // (createSession changes identity), retrying and toasting in a loop; "New chat" retries.
     autoCreateRef.current = true;
     createSession.mutate(undefined, {
       onSuccess: (session) => setSelectedSessionId(session.id),
-      onError: () => {
-        autoCreateRef.current = false;
-      },
     });
   }, [
     ready,

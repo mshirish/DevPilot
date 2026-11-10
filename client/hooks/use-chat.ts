@@ -112,7 +112,7 @@ export function useStreamChat(sessionId: string | null) {
         // The user pressed Stop: the question was sent, keep it
         if ((err as Error).name === "AbortError") return true;
         toast.add({
-          title: "Message failed",
+          title: "Message not sent",
           description: err instanceof Error ? err.message : "Unknown error",
           type: "error",
         });

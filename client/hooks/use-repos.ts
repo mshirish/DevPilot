@@ -71,10 +71,11 @@ export function useStartIndexing() {
       void queryClient.invalidateQueries({
         queryKey: queryKeys.repos.status(repo.id),
       });
+      // Not "loading": the toast times out long before indexing ends; progress shows on the repo
       toast.add({
         title: "Indexing started",
-        description: `Indexing ${repo.fullName}…`,
-        type: "loading",
+        description: `${repo.fullName}: progress is shown on the repository.`,
+        type: "info",
       });
     },
     onError: (error: Error) => {
@@ -99,8 +100,8 @@ export function useRefreshRepos() {
           type: "loading",
         },
         success: (repos) => ({
-          title: "Sync successful",
-          description: `${repos.length} repositories loaded`,
+          title: "Repositories synced",
+          description: `${repos.length} ${repos.length === 1 ? "repository" : "repositories"} loaded from GitHub`,
           type: "success",
         }),
         error: (error: Error) => ({
