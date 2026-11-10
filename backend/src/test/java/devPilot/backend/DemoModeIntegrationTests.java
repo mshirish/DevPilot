@@ -25,7 +25,8 @@ import org.springframework.web.context.WebApplicationContext;
 @SpringBootTest(properties = {
         "app.demo.enabled=true",
         "app.demo.admin-github-usernames=demo-admin",
-        "app.demo.repos=demo-admin/sample-repo"
+        "app.demo.repos=demo-admin/sample-repo",
+        "app.ai.provider-name= Test Provider "
 })
 class DemoModeIntegrationTests {
 
@@ -44,7 +45,8 @@ class DemoModeIntegrationTests {
         mvc.perform(get("/api/auth/config"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.demoMode").value(true))
-                .andExpect(jsonPath("$.demoRepos[0]").value("demo-admin/sample-repo"));
+                .andExpect(jsonPath("$.demoRepos[0]").value("demo-admin/sample-repo"))
+                .andExpect(jsonPath("$.aiProviderName").value("Test Provider"));
     }
 
     @Test

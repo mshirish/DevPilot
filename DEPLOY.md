@@ -87,7 +87,8 @@ and the `vector` table/extension (Spring AI).
 - Chat: a daily request limit per model (see your project's limits at aistudio.google.com/rate-limit).
   Keep `DEMO_MAX_MESSAGES_PER_DAY` below it.
 - On the free tier Google may use prompts to improve its products, so the login page tells visitors
-  their questions are sent to Google. Don't index anything private with a free key.
+  their questions are sent to Google Gemini (`AI_PROVIDER_NAME`; empty hides the line). Don't index
+  anything private with a free key.
 
 **Optional, paid: OpenAI instead.** Add ~$5 credit on platform.openai.com, create a project with a
 monthly budget, create a key, and set on Render:
@@ -99,9 +100,9 @@ monthly budget, create a key, and set on Render:
 | `OPENAI_CHAT_MODEL` | `gpt-4o-mini` |
 | `OPENAI_EMBEDDING_MODEL` | `text-embedding-3-small` |
 | `EMBEDDING_CHUNKS_PER_MINUTE` | `0` (no throttle needed) |
+| `AI_PROVIDER_NAME` | `OpenAI` (named on the login page) |
 
-Then re-index the preset repo: vectors from different embedding models can't be compared. Also
-update the Gemini line under the demo button in `client/app/login/page.tsx`.
+Then re-index the preset repo: vectors from different embedding models can't be compared.
 
 ## Step 3: GitHub OAuth app (for your owner sign-in)
 

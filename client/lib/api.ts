@@ -15,6 +15,8 @@ export type User = {
 export type AuthConfig = {
   demoMode: boolean;
   demoRepos: string[];
+  /** Who generates the answers, for the login page notice. Empty: don't show it. */
+  aiProviderName?: string;
 };
 
 export type Repository = {
