@@ -16,6 +16,8 @@ services:
         - backend/**
     envVars:
       # Database (Neon): jdbc:postgresql://<host>/<db>?sslmode=require
+      # (Spring's SPRING_DATASOURCE_* override the local POSTGRES_* defaults in application.properties.
+      # PORT is injected by Render; don't set it.)
       - key: SPRING_DATASOURCE_URL
         sync: false
       - key: SPRING_DATASOURCE_USERNAME
@@ -39,6 +41,13 @@ services:
         value: Google Gemini # shown on the login page; OpenAI: OpenAI. Empty hides the line
       - key: EMBEDDING_CHUNKS_PER_MINUTE
         value: "90" # Gemini free tier: 100 embedding inputs/min. 0 = no throttle (paid OpenAI)
+      # Optional tuning (these are the defaults)
+      - key: AI_MAX_RETRIES
+        value: "2" # SDK retries per AI request (429/5xx); kept low so chat fails fast
+      - key: EMBEDDING_RATE_LIMIT_RETRIES
+        value: "6" # indexing: retries of a batch after a per-minute 429 (30s, 60s, 120s...)
+      - key: DB_POOL_SIZE
+        value: "5" # max DB connections; the pool idles to zero so Neon can sleep
 
       # GitHub OAuth app (callback must be on the Vercel domain)
       - key: GITHUB_CLIENT_ID
