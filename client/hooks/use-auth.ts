@@ -2,6 +2,7 @@
 
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useRouter } from "next/navigation";
+import { useEffect, useState } from "react";
 
 
 import { api, ApiError } from "@/lib/api";
@@ -38,6 +39,54 @@ export function useCurrentUser(){
     })
 }
 
+/** Whether the signed-in user may sync/index repos. False for demo visitors (and while loading). */
+export function useCanManageRepos() {
+  const { data: user } = useCurrentUser();
+  return user?.canManageRepos ?? false;
+}
+
+/** Public backend settings (is demo mode on?). Also wakes a sleeping free-tier backend early. */
+export function useAuthConfig() {
+  return useQuery({
+    queryKey: queryKeys.auth.config(),
+    queryFn: () => api.authConfig(),
+    staleTime: Infinity,
+    retry: 2,
+  });
+}
+
+/** Signs in as a guest for the read-only demo, then caches the user like a normal login. */
+export function useDemoLogin() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: () => api.demoLogin(),
+    onSuccess: (user) => {
+      setAuthCookie(true);
+      queryClient.setQueryData(queryKeys.auth.me(), user);
+      // Drop any repo list cached from a previous user
+      queryClient.removeQueries({ queryKey: queryKeys.repos.all });
+    },
+  });
+}
+
+/**
+ * True once `active` has stayed true for `delayMs`. Used to explain slow first loads:
+ * the free backend sleeps when idle and takes about a minute to wake up.
+ */
+export function useIsSlow(active: boolean, delayMs = 4000) {
+  const [slow, setSlow] = useState(false);
+  useEffect(() => {
+    if (!active) return;
+    const timer = setTimeout(() => setSlow(true), delayMs);
+    return () => {
+      clearTimeout(timer);
+      setSlow(false);
+    };
+  }, [active, delayMs]);
+  return active && slow;
+}
+
 export function useLogout() {
   const queryClient = useQueryClient();
   const router = useRouter();
@@ -47,6 +96,8 @@ export function useLogout() {
     onSettled: async () => {
       setAuthCookie(false);
       queryClient.setQueryData(queryKeys.auth.me(), null);
+      queryClient.removeQueries({ queryKey: queryKeys.repos.all });
+      queryClient.removeQueries({ queryKey: queryKeys.chat.all });
       await queryClient.invalidateQueries({ queryKey: queryKeys.auth.all });
       router.replace("/login");
     },

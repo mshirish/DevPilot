@@ -16,7 +16,8 @@ export function ChatComposer({
 }: {
   disabled?: boolean;
   streaming?: boolean;
-  onSend: (content: string) => void | Promise<void>;
+  /** Return false if the message failed, to put the text back for a retry. */
+  onSend: (content: string) => boolean | void | Promise<boolean | void>;
   onStop?: () => void;
 }) {
   const [value, setValue] = useState("");
@@ -25,7 +26,11 @@ export function ChatComposer({
     const content = value.trim();
     if (!content || disabled || streaming) return;
     setValue("");
-    await onSend(content);
+    const sent = await onSend(content);
+    if (sent === false) {
+      // Put the question back so it can be retried (unless something new was typed meanwhile)
+      setValue((current) => current || content);
+    }
   }
 
   return (

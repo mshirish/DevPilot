@@ -11,10 +11,7 @@ import org.springframework.http.HttpHeaders;
 import org.springframework.stereotype.Service;
 import org.springframework.web.client.RestClient;
 
-import lombok.RequiredArgsConstructor;
-
 @Service
-@RequiredArgsConstructor
 public class GithubApiClient {
 
     private static final String API_BASE = "https://api.github.com";
@@ -24,14 +21,28 @@ public class GithubApiClient {
     private static final ParameterizedTypeReference<Map<String, Object>> MAP = new ParameterizedTypeReference<>() {
     };
 
-    private final RestClient.Builder restClientBuilder;
+    /**
+     * Built once and shared. The user's token is attached per request (see {@link #bearer}),
+     * never as a default header: the injected RestClient.Builder is a shared singleton, so
+     * mutating it per call let concurrent requests pick up another user's token.
+     */
+    private final RestClient restClient;
 
-     public List<Map<String, Object>> listUserRepos(String accessToken) {
+    public GithubApiClient(RestClient.Builder restClientBuilder) {
+        this.restClient = restClientBuilder.clone()
+                .baseUrl(API_BASE)
+                .defaultHeader(HttpHeaders.ACCEPT, "application/vnd.github+json")
+                .defaultHeader("X-GitHub-Api-Version", "2022-11-28")
+                .defaultHeader(HttpHeaders.USER_AGENT, "DevPilot")
+                .build();
+    }
+
+    public List<Map<String, Object>> listUserRepos(String accessToken) {
         List<Map<String, Object>> all = new ArrayList<>();
         int page = 1;
         while (page <= 10) {
             final int currentPage = page;
-            List<Map<String, Object>> pageRepos = client(accessToken)
+            List<Map<String, Object>> pageRepos = restClient
                     .get()
                     .uri(uriBuilder -> uriBuilder
                             .path("/user/repos")
@@ -40,6 +51,7 @@ public class GithubApiClient {
                             .queryParam("per_page", 100)
                             .queryParam("page", currentPage)
                             .build())
+                    .headers(bearer(accessToken))
                     .retrieve()
                     .body(LIST_MAP);
             if (pageRepos == null || pageRepos.isEmpty()) {
@@ -54,18 +66,20 @@ public class GithubApiClient {
         return all;
     }
 
-      public Map<String, Object> getRepoTree(String accessToken, String owner, String repo, String branch) {
-        return client(accessToken)
+    public Map<String, Object> getRepoTree(String accessToken, String owner, String repo, String branch) {
+        return restClient
                 .get()
                 .uri("/repos/{owner}/{repo}/git/trees/{branch}?recursive=1", owner, repo, branch)
+                .headers(bearer(accessToken))
                 .retrieve()
                 .body(MAP);
     }
 
-       public String getFileContent(String accessToken, String owner, String repo, String path) {
-        Map<String, Object> body = client(accessToken)
+    public String getFileContent(String accessToken, String owner, String repo, String path) {
+        Map<String, Object> body = restClient
                 .get()
                 .uri("/repos/{owner}/{repo}/contents/{path}", owner, repo, path)
+                .headers(bearer(accessToken))
                 .retrieve()
                 .body(MAP);
         if (body == null) {
@@ -82,14 +96,8 @@ public class GithubApiClient {
         }
         return String.valueOf(content);
     }
-    
-    private RestClient client(String accessToken){
-          return restClientBuilder
-                .baseUrl(API_BASE)
-                .defaultHeader(HttpHeaders.AUTHORIZATION, "Bearer " + accessToken)
-                .defaultHeader(HttpHeaders.ACCEPT, "application/vnd.github+json")
-                .defaultHeader("X-GitHub-Api-Version", "2022-11-28")
-                .defaultHeader(HttpHeaders.USER_AGENT, "DevPilot")
-                .build();
+
+    private static java.util.function.Consumer<HttpHeaders> bearer(String accessToken) {
+        return headers -> headers.setBearerAuth(accessToken);
     }
 }

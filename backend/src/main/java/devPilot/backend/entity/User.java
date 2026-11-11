@@ -47,6 +47,11 @@ public class User {
     @Column(name = "token_scopes", length = 500)
     private String tokenScopes;
 
+    /** Demo-mode visitor with no GitHub account (and no usable access token). */
+    @Column(name = "is_guest", nullable = false, columnDefinition = "boolean not null default false")
+    @Builder.Default
+    private boolean guest = false;
+
     @Column(name = "created_at", nullable = false, updatable = false)
     private Instant createdAt;
 

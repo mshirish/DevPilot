@@ -17,4 +17,7 @@ RUN useradd --system --uid 1001 spring
 COPY --from=build /app/build/libs/*-SNAPSHOT.jar app.jar
 USER spring
 EXPOSE 8080
-ENTRYPOINT ["java", "-XX:MaxRAMPercentage=75", "-jar", "app.jar"]
+# Tuned for small free-tier instances (~512 MB): serial GC and smaller thread stacks cut memory,
+# C1-only JIT speeds up startup. Override JAVA_OPTS on bigger machines.
+ENV JAVA_OPTS="-XX:MaxRAMPercentage=70 -XX:+UseSerialGC -Xss512k -XX:TieredStopAtLevel=1"
+ENTRYPOINT ["sh", "-c", "exec java $JAVA_OPTS -jar app.jar"]

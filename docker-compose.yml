@@ -23,11 +23,24 @@ services:
       SPRING_DATASOURCE_USERNAME: ${POSTGRES_USER:-devpilot}
       SPRING_DATASOURCE_PASSWORD: ${POSTGRES_PASSWORD:-devpilot}
       OPENAI_API_KEY: ${OPENAI_API_KEY:-changeme}
+      # LLM provider (OpenAI-compatible). Defaults match application.properties (Gemini free tier).
+      OPENAI_BASE_URL: ${OPENAI_BASE_URL:-https://generativelanguage.googleapis.com/v1beta/openai}
+      OPENAI_CHAT_MODEL: ${OPENAI_CHAT_MODEL:-gemini-3.5-flash-lite}
+      OPENAI_EMBEDDING_MODEL: ${OPENAI_EMBEDDING_MODEL:-gemini-embedding-001}
+      EMBEDDING_DIMENSIONS: ${EMBEDDING_DIMENSIONS:-1536}
+      EMBEDDING_CHUNKS_PER_MINUTE: ${EMBEDDING_CHUNKS_PER_MINUTE:-90}
+      AI_PROVIDER_NAME: ${AI_PROVIDER_NAME-Google Gemini}
       # Secrets come from the git-ignored .env file in the project root
       GITHUB_CLIENT_ID: ${GITHUB_CLIENT_ID}
       GITHUB_CLIENT_SECRET: ${GITHUB_CLIENT_SECRET}
       TOKEN_ENCRYPTOR_PASSWORD: ${TOKEN_ENCRYPTOR_PASSWORD}
       TOKEN_ENCRYPTOR_SALT: ${TOKEN_ENCRYPTOR_SALT}
+      # Optional demo mode (see DEPLOY.md); off unless set in .env
+      DEMO_MODE: ${DEMO_MODE:-false}
+      DEMO_ADMIN_GITHUB_USERNAMES: ${DEMO_ADMIN_GITHUB_USERNAMES:-}
+      DEMO_REPOS: ${DEMO_REPOS:-}
+      DEMO_MAX_MESSAGES_PER_USER: ${DEMO_MAX_MESSAGES_PER_USER:-20}
+      DEMO_MAX_MESSAGES_PER_DAY: ${DEMO_MAX_MESSAGES_PER_DAY:-200}
     ports:
       - "8080:8080"
     depends_on:

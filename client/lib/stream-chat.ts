@@ -1,4 +1,4 @@
-import { getApiBaseUrl, ApiError, type ChatMessage } from "@/lib/api";
+import { getApiBaseUrl, toApiError, type ChatMessage } from "@/lib/api";
 
 export type StreamChatHandlers = {
   onUserMessage?: (message: ChatMessage) => void;
@@ -26,14 +26,7 @@ export async function streamChatMessage(
   );
 
   if (!res.ok) {
-    let message = res.statusText;
-    try {
-      const data = await res.json();
-      message = data.message ?? data.error ?? message;
-    } catch {
-      // ignore
-    }
-    throw new ApiError(res.status, message);
+    throw await toApiError(res);
   }
 
   if (!res.body) {

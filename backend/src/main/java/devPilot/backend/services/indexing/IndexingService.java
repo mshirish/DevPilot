@@ -30,7 +30,7 @@ import lombok.extern.slf4j.Slf4j;
 @RequiredArgsConstructor
 @Slf4j
 public class IndexingService {
-    private static final int VECTOR_BATCH_SIZE = 32;
+    private static final int VECTOR_BATCH_SIZE = VectorBatchWriter.BATCH_SIZE;
     private static final int PROGRESS_EVERY_N_FILES = 5;
 
     private final RepositoryRepository repositoryRepository;
@@ -40,6 +40,7 @@ public class IndexingService {
     private final CodeChunker codeChunker;
     private final GitHubRateLimiter rateLimiter;
     private final VectorStore vectorStore;
+    private final VectorBatchWriter vectorBatchWriter;
 
     @Value("${app.indexing.max-file-bytes:102400}")
     private long maxFileBytes;
@@ -96,12 +97,14 @@ public class IndexingService {
                 List<Document> chunks = codeChunker.chunkFile(repoId.toString(), path, content);
                 batch.addAll(chunks);
                 totalChunks += chunks.size();
-                if (batch.size() >= VECTOR_BATCH_SIZE) {
-                    vectorStore.add(batch);
-                    batch.clear();
-                }
             } catch (Exception ex) {
                 log.warn("Skipping file {} in {}: {}", path, repo.getFullName(), ex.getMessage());
+            }
+            // Outside the per-file catch: an embedding failure (e.g. provider rate limit after
+            // retries) must fail the run, not be logged as a skipped file while chunks are lost
+            if (batch.size() >= VECTOR_BATCH_SIZE) {
+                vectorBatchWriter.write(batch);
+                batch.clear();
             }
 
             processed++;
@@ -112,7 +115,7 @@ public class IndexingService {
         }
 
         if (!batch.isEmpty()) {
-            vectorStore.add(batch);
+            vectorBatchWriter.write(batch);
         }
 
         markReady(repoId, filePaths.size(), processed, totalChunks, repo.getFullName());

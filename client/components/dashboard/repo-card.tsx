@@ -19,12 +19,14 @@ import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
 import { Spinner } from "@/components/ui/spinner";
 import { getRepoProgress, useStartIndexing } from "@/hooks/use-repos";
+import { useCanManageRepos } from "@/hooks/use-auth";
 import type { Repository } from "@/lib/api";
 import { cn } from "@/lib/utils";
 
 export function RepoCard({ repo }: { repo: Repository }) {
   const router = useRouter();
   const indexMutation = useStartIndexing();
+  const canManage = useCanManageRepos();
   const isIndexing = repo.indexStatus === "INDEXING" || indexMutation.isPending;
   const isFailed = repo.indexStatus === "FAILED";
   const progress = getRepoProgress(repo);
@@ -38,6 +40,7 @@ export function RepoCard({ repo }: { repo: Repository }) {
       openChat();
       return;
     }
+    if (!canManage) return;
     indexMutation.mutate(repo.id, {
       onSuccess: () => router.push(`/chat/${repo.id}`),
     });
@@ -152,7 +155,7 @@ export function RepoCard({ repo }: { repo: Repository }) {
             size="sm"
             variant={isFailed ? "outline" : "default"}
             className={cn(isFailed && "border-destructive/30 text-destructive hover:bg-destructive/10")}
-            disabled={isIndexing}
+            disabled={isIndexing || (!canManage && repo.indexStatus !== "READY")}
             onClick={handlePrimary}
           >
             {isIndexing ? (
@@ -165,6 +168,8 @@ export function RepoCard({ repo }: { repo: Repository }) {
                 Open
                 <ArrowRight data-icon="inline-end" />
               </>
+            ) : !canManage ? (
+              <>Not indexed yet</>
             ) : isFailed ? (
               <>
                 <RotateCcw data-icon="inline-start" />

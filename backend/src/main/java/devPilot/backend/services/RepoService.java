@@ -2,19 +2,26 @@ package devPilot.backend.services;
 
 import java.time.Instant;
 import java.util.ArrayList;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.UUID;
 
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import devPilot.backend.config.DemoMode;
 import devPilot.backend.dto.IndexStatusResponse;
 import devPilot.backend.dto.RepositoryResponse;
+import devPilot.backend.entity.IndexStatus;
 import devPilot.backend.entity.Repository;
 import devPilot.backend.entity.User;
+import devPilot.backend.exceptions.BadRequestException;
+import devPilot.backend.exceptions.ForbiddenException;
 import devPilot.backend.exceptions.NotFoundException;
 import devPilot.backend.repository.RepositoryRepository;
+import devPilot.backend.repository.UserRepository;
 import devPilot.backend.services.github.GithubApiClient;
 
 import lombok.RequiredArgsConstructor;
@@ -25,6 +32,8 @@ public class RepoService {
     private final RepositoryRepository repositoryRepository;
     private final UserService userService;
     private final GithubApiClient gitHubApiClient;
+    private final UserRepository userRepository;
+    private final DemoMode demoMode;
 
     @Transactional
     public List<RepositoryResponse> syncAndListRepos(UUID userId) {
@@ -85,10 +94,82 @@ public class RepoService {
                 .orElseThrow(() -> new NotFoundException("Repository not found"));
     }
 
-    
+    /**
+     * Repo list for the dashboard. In demo mode, visitors (anyone who can't manage repos)
+     * see only the preset demo repos and never trigger a GitHub sync.
+     */
+    @Transactional
+    public List<RepositoryResponse> listForUser(UUID userId, boolean refresh) {
+        User user = userService.requiredById(userId);
+        if (!demoMode.canManageRepos(user)) {
+            return listDemoRepos();
+        }
+        return refresh ? syncAndListRepos(userId) : listStored(userId);
+    }
+
+    /** Preset demo repos, as synced/indexed by an admin. One entry per full name. */
+    @Transactional(readOnly = true)
+    public List<RepositoryResponse> listDemoRepos() {
+        if (demoMode.repoFullNames().isEmpty()) {
+            return List.of();
+        }
+        Map<String, Repository> byName = new LinkedHashMap<>();
+        for (Repository repo : repositoryRepository.findByLowerFullNameIn(demoMode.repoFullNames())) {
+            if (!isAdminOwned(repo)) {
+                continue;
+            }
+            String key = repo.getFullName().toLowerCase(Locale.ROOT);
+            Repository existing = byName.get(key);
+            // If two admins synced the same repo, prefer the indexed copy
+            if (existing == null
+                    || (existing.getIndexStatus() != IndexStatus.READY && repo.getIndexStatus() == IndexStatus.READY)) {
+                byName.put(key, repo);
+            }
+        }
+        return byName.values().stream().map(this::toResponse).toList();
+    }
+
+    /**
+     * Read access: the user's own repo, or (in demo mode) a preset demo repo owned by an admin.
+     * Use this for viewing and chatting; use {@link #requireManageable} for sync/index.
+     */
+    @Transactional(readOnly = true)
+    public Repository requireReadable(UUID repoId, UUID userId) {
+        Repository repo = repositoryRepository.findById(repoId)
+                .orElseThrow(() -> new NotFoundException("Repository not found"));
+        if (repo.getUserId().equals(userId)) {
+            return repo;
+        }
+        if (demoMode.isEnabled() && demoMode.isDemoRepo(repo.getFullName()) && isAdminOwned(repo)) {
+            return repo;
+        }
+        throw new NotFoundException("Repository not found");
+    }
+
+    /** Write access (indexing). In demo mode: admins only, and only the preset repos. */
+    @Transactional(readOnly = true)
+    public Repository requireManageable(UUID repoId, UUID userId) {
+        User user = userService.requiredById(userId);
+        if (!demoMode.canManageRepos(user)) {
+            throw new ForbiddenException("This is a read-only demo. Indexing is disabled.");
+        }
+        Repository repo = requireOwned(repoId, userId);
+        if (demoMode.isEnabled() && !demoMode.isDemoRepo(repo.getFullName())) {
+            throw new BadRequestException(
+                    "Demo mode only indexes the preset repos (DEMO_REPOS). Add " + repo.getFullName() + " there first.");
+        }
+        return repo;
+    }
+
+    private boolean isAdminOwned(Repository repo) {
+        return userRepository.findById(repo.getUserId())
+                .map(demoMode::canManageRepos)
+                .orElse(false);
+    }
+
     @Transactional(readOnly = true)
     public IndexStatusResponse status(UUID repoId, UUID userId) {
-        Repository repo = requireOwned(repoId, userId);
+        Repository repo = requireReadable(repoId, userId);
         return new IndexStatusResponse(
                 repo.getId(),
                 repo.getIndexStatus(),

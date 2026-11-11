@@ -13,6 +13,7 @@ import {
   useCreateChatSession,
 } from "@/hooks/use-chat";
 import { useStartIndexing } from "@/hooks/use-repos";
+import { useCanManageRepos } from "@/hooks/use-auth";
 import type { Repository } from "@/lib/api";
 import { cn } from "@/lib/utils";
 
@@ -29,6 +30,7 @@ export function ChatSidebar({
   const sessionsQuery = useChatSessions(repo.id, ready);
   const createSession = useCreateChatSession(repo.id);
   const reindex = useStartIndexing();
+  const canManage = useCanManageRepos();
 
   return (
     <aside className="flex w-full flex-col border-b md:w-72 md:border-r md:border-b-0">
@@ -57,15 +59,17 @@ export function ChatSidebar({
             <Plus data-icon="inline-start" />
             New chat
           </Button>
-          <Button
-            size="sm"
-            variant="outline"
-            disabled={reindex.isPending || repo.indexStatus === "INDEXING"}
-            onClick={() => reindex.mutate(repo.id)}
-            aria-label="Re-index repository"
-          >
-            <RotateCcw />
-          </Button>
+          {canManage && (
+            <Button
+              size="sm"
+              variant="outline"
+              disabled={reindex.isPending || repo.indexStatus === "INDEXING"}
+              onClick={() => reindex.mutate(repo.id)}
+              aria-label="Re-index repository"
+            >
+              <RotateCcw />
+            </Button>
+          )}
         </div>
       </div>
 

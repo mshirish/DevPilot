@@ -12,6 +12,7 @@ import {
 } from "@/components/ui/empty";
 import { Progress } from "@/components/ui/progress";
 import { getRepoProgress, useStartIndexing } from "@/hooks/use-repos";
+import { useCanManageRepos } from "@/hooks/use-auth";
 import type { IndexStatusResponse, Repository } from "@/lib/api";
 
 export function IndexingState({
@@ -22,6 +23,7 @@ export function IndexingState({
   status?: IndexStatusResponse;
 }) {
   const indexMutation = useStartIndexing();
+  const canManage = useCanManageRepos();
   const filesProcessed = status?.filesProcessed ?? repo.filesProcessed;
   const filesTotal = status?.filesTotal ?? repo.filesTotal;
   const chunkCount = status?.chunkCount ?? repo.chunkCount;
@@ -41,13 +43,15 @@ export function IndexingState({
             {errorMessage || "Something went wrong while indexing this repository."}
           </EmptyDescription>
         </EmptyHeader>
-        <Button
-          onClick={() => indexMutation.mutate(repo.id)}
-          disabled={indexMutation.isPending}
-        >
-          <RotateCcw data-icon="inline-start" />
-          Retry indexing
-        </Button>
+        {canManage && (
+          <Button
+            onClick={() => indexMutation.mutate(repo.id)}
+            disabled={indexMutation.isPending}
+          >
+            <RotateCcw data-icon="inline-start" />
+            Retry indexing
+          </Button>
+        )}
       </Empty>
     );
   }

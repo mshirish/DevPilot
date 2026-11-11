@@ -23,6 +23,8 @@ type DashboardHeaderProps = {
   readyCount?: number;
   onSync: () => void;
   isSyncing?: boolean;
+  /** Hide "Sync" for demo visitors, who can't pull repos from GitHub */
+  canSync?: boolean;
 };
 
 const visibilityFilters = [
@@ -75,6 +77,7 @@ export function DashboardHeader({
   readyCount,
   onSync,
   isSyncing,
+  canSync = true,
 }: DashboardHeaderProps) {
   return (
     <div className="sticky top-0 z-20 border-b bg-background/85 backdrop-blur-xl">
@@ -105,18 +108,20 @@ export function DashboardHeader({
               />
             </div>
             <div className="flex items-center gap-2">
-              <Button
-                variant="outline"
-                className="border-dashed shadow-sm"
-                onClick={onSync}
-                disabled={isSyncing}
-              >
-                <RefreshCw
-                  data-icon="inline-start"
-                  className={isSyncing ? "animate-spin" : undefined}
-                />
-                Sync
-              </Button>
+              {canSync && (
+                <Button
+                  variant="outline"
+                  className="border-dashed shadow-sm"
+                  onClick={onSync}
+                  disabled={isSyncing}
+                >
+                  <RefreshCw
+                    data-icon="inline-start"
+                    className={isSyncing ? "animate-spin" : undefined}
+                  />
+                  Sync
+                </Button>
+              )}
               <ModeToggle />
             </div>
           </div>

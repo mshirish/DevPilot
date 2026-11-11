@@ -15,6 +15,9 @@ import {
 } from "@/components/ui/empty";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useRefreshRepos, useRepos } from "@/hooks/use-repos";
+import { useCanManageRepos } from "@/hooks/use-auth";
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
+import { Info } from "lucide-react";
 import type { IndexStatus } from "@/lib/api";
 
 type FilterStatus = "ALL" | IndexStatus;
@@ -22,6 +25,7 @@ type FilterStatus = "ALL" | IndexStatus;
 export function RepoDashboard() {
   const reposQuery = useRepos();
   const refresh = useRefreshRepos();
+  const canManage = useCanManageRepos();
   const [search, setSearch] = useState("");
   const [status, setStatus] = useState<FilterStatus>("ALL");
   const [visibility, setVisibility] = useState<"all" | "public" | "private">(
@@ -61,9 +65,21 @@ export function RepoDashboard() {
         readyCount={readyCount}
         onSync={() => refresh.mutate()}
         isSyncing={refresh.isPending || reposQuery.isFetching}
+        canSync={canManage}
       />
 
       <div className="flex flex-1 flex-col gap-4 p-4 md:p-6">
+        {!canManage && (
+          <Alert>
+            <Info />
+            <AlertTitle>You&apos;re using the live demo</AlertTitle>
+            <AlertDescription>
+              These repositories are already indexed. Open one and ask how it
+              works, e.g. &ldquo;How does GitHub login work?&rdquo; Questions are
+              limited per visitor.
+            </AlertDescription>
+          </Alert>
+        )}
         {reposQuery.isLoading && (
           <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
             {Array.from({ length: 6 }).map((_, i) => (

@@ -4,6 +4,7 @@ import "./globals.css";
 import { cn } from "@/lib/utils";
 import { ThemeProvider } from "@/components/providers/theme-provider";
 import QueryProvider from "@/components/providers/query-provider";
+import { Toaster } from "@/components/ui/toast";
 
 const jetbrainsMono = JetBrains_Mono({
   subsets: ["latin"],
@@ -50,7 +51,8 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
             enableSystem
             disableTransitionOnChange
           >
-            {children}
+            {/* Viewport for the global toast manager; without it, toast.add() shows nothing */}
+            <Toaster>{children}</Toaster>
           </ThemeProvider>
         </QueryProvider>
       </body>

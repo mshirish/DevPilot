@@ -26,7 +26,7 @@ The project is built using Spring Boot, Next.js, Spring AI, and PostgreSQL with 
 | Frontend | Next.js, React, TypeScript |
 | Backend | Java 21, Spring Boot |
 | Authentication | Spring Security, GitHub OAuth 2.0 |
-| AI Integration | Spring AI, OpenAI |
+| AI Integration | Spring AI (OpenAI-compatible API: Google Gemini by default, or OpenAI) |
 | Database | PostgreSQL |
 | Vector Database | pgvector |
 | ORM | Spring Data JPA, Hibernate |
@@ -57,7 +57,7 @@ Make sure the following are installed:
 - Node.js and npm
 - Java 21 (for running the backend outside Docker)
 
-You will also need GitHub OAuth credentials and an OpenAI API key for the corresponding integrations.
+You will also need GitHub OAuth credentials and an AI API key: a free Google Gemini key from Google AI Studio (the default), or an OpenAI key (see `.env.example`).
 
 ### 1. Clone the Repository
 
@@ -70,7 +70,7 @@ cd DevPilot
 
 Create the required environment configuration using the project's application settings.
 
-Configure the PostgreSQL connection, GitHub OAuth client credentials, OpenAI API key, and any application security secrets required by the backend.
+Configure the PostgreSQL connection, GitHub OAuth client credentials, AI API key (`OPENAI_API_KEY`), and any application security secrets required by the backend.
 
 Keep credentials in local environment files or environment variables. Do not commit secrets to GitHub.
 
@@ -113,6 +113,11 @@ To stop the Docker services:
 ```bash
 docker compose down
 ```
+
+## Deployment
+
+DevPilot can be deployed for free as a public demo (Vercel + Render + Neon), with a guest
+"Try the live demo" mode limited to preset repositories. See **[DEPLOY.md](DEPLOY.md)**.
 
 ## Project Structure
 

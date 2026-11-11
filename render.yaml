@@ -1,0 +1,77 @@
+# Render Blueprint for the DevPilot backend (Spring Boot). See DEPLOY.md.
+# Render reads this file when you create a "Blueprint" from the repo.
+# Values marked `sync: false` are secrets: Render asks you for them on first deploy.
+services:
+  - type: web
+    name: devpilot-api
+    runtime: docker
+    plan: free
+    region: ohio # keep close to the Neon database (AWS us-east-2)
+    dockerfilePath: ./backend/Dockerfile
+    dockerContext: ./backend
+    healthCheckPath: /actuator/health
+    # Only rebuild when backend code changes
+    buildFilter:
+      paths:
+        - backend/**
+    envVars:
+      # Database (Neon): jdbc:postgresql://<host>/<db>?sslmode=require
+      - key: SPRING_DATASOURCE_URL
+        sync: false
+      - key: SPRING_DATASOURCE_USERNAME
+        sync: false
+      - key: SPRING_DATASOURCE_PASSWORD
+        sync: false
+
+      # LLM provider: any OpenAI-compatible API. Defaults are Google Gemini's free tier;
+      # the key is a Gemini API key from Google AI Studio (or an OpenAI key, see DEPLOY.md).
+      - key: OPENAI_API_KEY
+        sync: false
+      - key: OPENAI_BASE_URL
+        value: https://generativelanguage.googleapis.com/v1beta/openai # OpenAI: https://api.openai.com/v1
+      - key: OPENAI_CHAT_MODEL
+        value: gemini-3.5-flash-lite # OpenAI: gpt-4o-mini
+      - key: OPENAI_EMBEDDING_MODEL
+        value: gemini-embedding-001 # OpenAI: text-embedding-3-small
+      - key: EMBEDDING_DIMENSIONS
+        value: "1536" # must match the pgvector table; max 2000 for HNSW
+      - key: AI_PROVIDER_NAME
+        value: Google Gemini # shown on the login page; OpenAI: OpenAI. Empty hides the line
+      - key: EMBEDDING_CHUNKS_PER_MINUTE
+        value: "90" # Gemini free tier: 100 embedding inputs/min. 0 = no throttle (paid OpenAI)
+
+      # GitHub OAuth app (callback must be on the Vercel domain)
+      - key: GITHUB_CLIENT_ID
+        sync: false
+      - key: GITHUB_CLIENT_SECRET
+        sync: false
+      - key: GITHUB_REDIRECT_URI
+        sync: false # https://<your-app>.vercel.app/login/oauth2/code/github
+      - key: GITHUB_OAUTH_SCOPES
+        value: read:user
+
+      # Frontend URL (where users land after sign-in) and CORS
+      - key: FRONTEND_URL
+        sync: false # https://<your-app>.vercel.app
+      - key: CORS_ALLOWED_ORIGINS
+        sync: false # same as FRONTEND_URL
+      - key: SESSION_COOKIE_SECURE
+        value: "true"
+
+      # Encrypts stored GitHub tokens
+      - key: TOKEN_ENCRYPTOR_PASSWORD
+        generateValue: true
+      - key: TOKEN_ENCRYPTOR_SALT
+        sync: false # hex, e.g. output of: openssl rand -hex 8
+
+      # Demo mode
+      - key: DEMO_MODE
+        value: "true"
+      - key: DEMO_ADMIN_GITHUB_USERNAMES
+        sync: false # your GitHub username
+      - key: DEMO_REPOS
+        sync: false # e.g. yourname/DevPilot
+      - key: DEMO_MAX_MESSAGES_PER_USER
+        value: "20"
+      - key: DEMO_MAX_MESSAGES_PER_DAY
+        value: "200" # keep below the chat model's free daily request limit
