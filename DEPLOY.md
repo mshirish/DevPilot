@@ -41,37 +41,32 @@ custom domain needed.
 
 ---
 
-## Step 0: Fork and pick your names
+## Step 0: Fork
 
 1. Fork the repo to your GitHub account. Your preset repo will be `<your-username>/DevPilot`.
 2. Make sure the fork is **public**: demo mode indexes it with a `read:user` token, which can only read public repos.
-3. Pick a Vercel project name now, e.g. `devpilot-<yourname>`. Your frontend URL will be
-   `https://devpilot-<yourname>.vercel.app`. You need this URL *before* creating the GitHub OAuth
-   app and the Render service, so write it down. (If Vercel adds a suffix because the name is
-   taken, update the URLs in steps 3 and 4 to match.)
 
-Below, `FRONTEND` means that URL (no trailing slash).
+Every step below is free and none needs a credit card. If a service asks for one, stop: something
+is set to a paid plan.
 
-## Step 1: Database (Neon)
+## Step 1: Frontend first (Vercel), to get its URL
 
-1. Sign up at neon.com (no card needed) and create a project. Pick region **AWS US East 2 (Ohio)**,
-   because the Render service uses Ohio too. Keeping them close makes every query faster.
-2. On the project dashboard click **Connect**. Turn **Connection pooling off** (use the direct
-   connection) and copy the connection string. It looks like:
-   `postgresql://neondb_owner:AbC123@ep-cool-name-123456.us-east-2.aws.neon.tech/neondb?sslmode=require`
-3. Split it into the three values Spring Boot wants:
-   - `SPRING_DATASOURCE_URL` = `jdbc:postgresql://ep-cool-name-123456.us-east-2.aws.neon.tech/neondb?sslmode=require`
-     (add `jdbc:`, drop the `user:password@` part)
-   - `SPRING_DATASOURCE_USERNAME` = `neondb_owner`
-   - `SPRING_DATASOURCE_PASSWORD` = `AbC123`
+The GitHub OAuth app and the backend both need the frontend's URL, so create the frontend first.
 
-You don't need to create any tables or extensions. On first start, the app creates its tables (Hibernate)
-and the `vector` table/extension (Spring AI).
+1. Sign up at vercel.com with GitHub (Hobby plan). **Add New → Project**, import your fork.
+2. Project name: e.g. `devpilot`. **Root Directory: `client`** (important). Framework: Next.js
+   (auto-detected). **Don't add any environment variables yet.**
+3. Deploy. The site loads but can't reach a backend yet; that's expected.
+4. Find the production URL: Project → **Settings → Domains**. Use the `*.vercel.app` domain listed
+   there (e.g. `https://devpilot-abc.vercel.app`), not the long per-deployment URL with a hash.
 
-## Step 2: Free Gemini API key
+Below, `FRONTEND` means that URL (with `https://`, no trailing slash).
+
+## Step 2: Free Gemini API key (its own Google Cloud project)
 
 1. Go to Google AI Studio (aistudio.google.com) and sign in with a Google account.
-2. Click **Get API key → Create API key**. This creates a Google Cloud project on the free tier.
+2. Click **Get API key → Create API key** and choose to create it in a **new project** (not the one
+   you use for local testing), so local experiments can't use up the demo's daily quota.
    Copy the key → `OPENAI_API_KEY` (the app talks to Gemini through its OpenAI-compatible API,
    so the variable keeps the OpenAI name).
 3. **Don't enable billing** on that project. Without billing, Google can't charge you: when the free
@@ -80,8 +75,9 @@ and the `vector` table/extension (Spring AI).
 `render.yaml` already points the app at Gemini (`OPENAI_BASE_URL`, `OPENAI_CHAT_MODEL=gemini-3.5-flash-lite`,
 `OPENAI_EMBEDDING_MODEL=gemini-embedding-001`, `EMBEDDING_DIMENSIONS=1536`). Free-tier limits to know about:
 
-- Embeddings: 100 chunks per minute and **1,000 per day** (each chunk counts as one request; the
-  day resets at midnight Pacific time). Indexing is throttled to 90/min (`EMBEDDING_CHUNKS_PER_MINUTE`),
+- Embeddings: 100 chunks per minute and **1,000 per day** (each chunk counts as one request). The
+  daily quota frees up again within about a day; Google doesn't promise an exact reset time.
+  Indexing is throttled to 90/min (`EMBEDDING_CHUNKS_PER_MINUTE`),
   so a repo the size of DevPilot (~750 chunks) takes about 9 minutes and uses ~75% of a day's
   quota: index it **once**, not repeatedly. Every chat question also uses one embedding.
 - Chat: a daily request limit per model (see your project's limits at aistudio.google.com/rate-limit).
@@ -104,8 +100,22 @@ monthly budget, create a key, and set on Render:
 
 Then re-index the preset repo: vectors from different embedding models can't be compared.
 
-## Step 3: GitHub OAuth app (for your owner sign-in)
+## Step 3: Database (Neon)
+1. Sign up at neon.com (no card needed) and create a project. Pick region **AWS US East 2 (Ohio)**,
+   because the Render service uses Ohio too. Keeping them close makes every query faster.
+2. On the project dashboard click **Connect**. Turn **Connection pooling off** (use the direct
+   connection) and copy the connection string. It looks like:
+   `postgresql://neondb_owner:AbC123@ep-cool-name-123456.us-east-2.aws.neon.tech/neondb?sslmode=require`
+3. Split it into the three values Spring Boot wants:
+   - `SPRING_DATASOURCE_URL` = `jdbc:postgresql://ep-cool-name-123456.us-east-2.aws.neon.tech/neondb?sslmode=require`
+     (add `jdbc:`, drop the `user:password@` part)
+   - `SPRING_DATASOURCE_USERNAME` = `neondb_owner`
+   - `SPRING_DATASOURCE_PASSWORD` = `AbC123`
 
+You don't need to create any tables or extensions. On first start, the app creates its tables (Hibernate)
+and the `vector` table/extension (Spring AI).
+
+## Step 4: GitHub OAuth app (for your owner sign-in)
 GitHub → Settings → Developer settings → **OAuth Apps** → New OAuth App:
 
 - Application name: `DevPilot`
@@ -113,19 +123,18 @@ GitHub → Settings → Developer settings → **OAuth Apps** → New OAuth App:
 - Authorization callback URL: `FRONTEND/login/oauth2/code/github`
 
 Create it, then **Generate a new client secret**. Keep both values: `GITHUB_CLIENT_ID` and
-`GITHUB_CLIENT_SECRET`. Use a separate OAuth app from your local one, because each OAuth app has one callback URL.
+`GITHUB_CLIENT_SECRET`. Use a separate OAuth app from your local ones, because each OAuth app has one callback URL.
 
-## Step 4: Backend (Render)
-
+## Step 5: Backend (Render)
 1. Sign up at render.com with GitHub. **New → Blueprint**, pick your fork. Render reads
    `render.yaml` and proposes one service, `devpilot-api`, on the Free plan.
 2. Fill in the values it asks for:
 
    | Key | Value |
    |---|---|
-   | `SPRING_DATASOURCE_URL` / `_USERNAME` / `_PASSWORD` | from step 1 |
+   | `SPRING_DATASOURCE_URL` / `_USERNAME` / `_PASSWORD` | from step 3 |
    | `OPENAI_API_KEY` | from step 2 |
-   | `GITHUB_CLIENT_ID` / `GITHUB_CLIENT_SECRET` | from step 3 |
+   | `GITHUB_CLIENT_ID` / `GITHUB_CLIENT_SECRET` | from step 4 |
    | `GITHUB_REDIRECT_URI` | `FRONTEND/login/oauth2/code/github` |
    | `FRONTEND_URL` | `FRONTEND` |
    | `CORS_ALLOWED_ORIGINS` | `FRONTEND` |
@@ -142,23 +151,24 @@ Create it, then **Generate a new client secret**. Keep both values: `GITHUB_CLIE
 If the deploy fails, open the service's **Logs**. Most failures are a typo in the database
 values. See Troubleshooting below.
 
-## Step 5: Frontend (Vercel)
+## Step 6: Connect the frontend to the backend
 
-1. Sign up at vercel.com with GitHub. **Add New → Project**, import your fork.
-2. Project name: the one from step 0. **Root Directory: `client`** (important). Framework: Next.js (auto-detected).
-3. Environment variable: `BACKEND_URL` = your Render URL from step 4 (no trailing slash).
-   Do **not** set `NEXT_PUBLIC_API_URL` on Vercel; `BACKEND_URL` takes care of it.
-4. Deploy. Check that the production URL matches `FRONTEND`. If not, update the GitHub OAuth app
-   and the three Render variables that contain it.
+1. Vercel → Project → **Settings → Environment Variables**: add `BACKEND_URL` = your Render URL from
+   step 5 (no trailing slash), for Production. Do **not** set `NEXT_PUBLIC_API_URL` on Vercel;
+   `BACKEND_URL` takes care of it.
+2. **Deployments → ⋯ → Redeploy.** `BACKEND_URL` is read at build time (it turns on the proxy), so
+   saving the variable alone changes nothing.
+3. Open `FRONTEND/api/auth/config`. It should return `{"demoMode":true,...}`, served by the
+   backend through the proxy.
 
-## Step 6: Index the preset repo (one time)
+## Step 7: Index the preset repo (one time)
 
 1. Open `FRONTEND/login` and click **Owner sign-in with GitHub** (wait a minute if the backend is waking up).
 2. On the dashboard click **Sync**, find `<your-username>/DevPilot`, click **Index**.
 3. Wait for **Ready** (about 9 minutes for DevPilot on the Gemini free tier; keep the tab
    open so Render doesn't fall asleep), then ask a test question in chat.
 
-## Step 7: Test it as a visitor
+## Step 8: Test it as a visitor
 
 Open `FRONTEND` in a private/incognito window → **Try the live demo**. You should see only the
 preset repo, no Sync/Index buttons, and chat should work. That's the link for your portfolio.
@@ -187,8 +197,8 @@ preset repo, no Sync/Index buttons, and chat should work. That's the link for yo
 | Render log: `Connection to ... refused` / `password authentication failed` | Recheck the three Neon values; the URL must start with `jdbc:postgresql://` |
 | Render log: `OutOfMemoryError` | The free instance has 512 MB. Lower heap with `JAVA_OPTS=-XX:MaxRAMPercentage=60 -XX:+UseSerialGC -Xss512k -XX:TieredStopAtLevel=1` |
 | Chat says "The AI service is getting too many requests" | Gemini free-tier per-minute limit. Wait a minute |
-| Chat says "used up today's free quota" | Gemini daily limit reached; it resets at midnight Pacific time. Lower `DEMO_MAX_MESSAGES_PER_DAY` |
-| Indexing fails with "daily embedding quota is used up" | The repo was indexed more than once today (1,000 chunks/day). Retry after midnight Pacific |
+| Chat says "used up today's free quota" | Gemini daily limit reached; it frees up again within about a day. Lower `DEMO_MAX_MESSAGES_PER_DAY` |
+| Indexing fails with "daily embedding quota is used up" | The repo was indexed more than once today (1,000 chunks/day). Retry tomorrow |
 | Indexing fails with "rate limit was reached while indexing" | Something else is using the same key's per-minute quota. Retry later |
 | Chat or indexing fails with 404 from the AI provider | `OPENAI_BASE_URL` is missing its version path (`.../v1beta/openai` for Gemini, `.../v1` for OpenAI) |
 | Indexing stops with "interrupted by a server restart" | Render slept or restarted mid-index. Click Retry, and keep the tab open while it runs |
