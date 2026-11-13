@@ -2,6 +2,10 @@
 
 **Understand your codebase with AI.**
 
+**Live demo:** [dev-pilot-blush.vercel.app/login](https://dev-pilot-blush.vercel.app/login): click
+**Try the live demo**, no sign-up needed. It runs on free hosting, so the first load after a quiet
+spell can take 1–2 minutes while the server wakes up.
+
 DevPilot is an AI-powered GitHub repository assistant that helps developers explore, understand, and navigate their codebases using natural language.
 
 Instead of manually searching through multiple files to understand how a feature works, developers can connect their GitHub repositories and ask questions about their code.

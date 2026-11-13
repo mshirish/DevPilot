@@ -5,7 +5,7 @@ This guide deploys DevPilot as a **public portfolio demo** at no hosting cost:
 | Piece | Host | Free-tier catch |
 |---|---|---|
 | Frontend (Next.js) | **Vercel** (Hobby) | None that matter here |
-| Backend (Spring Boot) | **Render** (Free web service) | Sleeps after 15 min idle; first request takes ~1 min to wake |
+| Backend (Spring Boot) | **Render** (Free web service) | Sleeps after 15 min idle; first request takes 1–2 min to wake (Spring starts in ~90 s) |
 | Database (Postgres + pgvector) | **Neon** (Free) | 0.5 GB storage; sleeps when idle (wakes in under a second) |
 | LLM + embeddings | **Google Gemini API** (free tier) | Low rate limits; indexing is throttled, so it takes a few minutes |
 
@@ -163,7 +163,7 @@ values. See Troubleshooting below.
 
 ## Step 7: Index the preset repo (one time)
 
-1. Open `FRONTEND/login` and click **Owner sign-in with GitHub** (wait a minute if the backend is waking up).
+1. Open `FRONTEND/login` and click **Owner sign-in with GitHub** (wait 1–2 minutes if the backend is waking up).
 2. On the dashboard click **Sync**, find `<your-username>/DevPilot`, click **Index**.
 3. Wait for **Ready** (about 9 minutes for DevPilot on the Gemini free tier; keep the tab
    open so Render doesn't fall asleep), then ask a test question in chat.
@@ -178,7 +178,7 @@ preset repo, no Sync/Index buttons, and chat should work. That's the link for yo
 ## Putting it on your portfolio
 
 - Link straight to `FRONTEND/login` so visitors land on the **Try the live demo** button.
-- Mention the cold start next to the link ("free hosting, first load takes ~1 min"). That way a
+- Mention the cold start next to the link ("free hosting, first load takes 1–2 min"). That way a
   recruiter waits instead of assuming the site is down.
 - A 30–60 second screen recording or a few screenshots next to the link helps people who won't wait.
 - Credit the team (the contributors listed in `README.md`) and say what *you* built.
@@ -187,7 +187,11 @@ preset repo, no Sync/Index buttons, and chat should work. That's the link for yo
 
 | Symptom | Likely cause |
 |---|---|
-| Login page shows "Waking up the server…" for over 2 minutes | Render is still deploying or crashed. Check Render logs |
+| Login page shows "Waking up the server…" for over 3 minutes | Render is still deploying or crashed. Check Render logs |
+| Opening the Render URL itself shows `{"status":404,..."No static resource ."}` | Expected: the backend is API-only. Use `FRONTEND`; check the backend with `<render-url>/actuator/health` |
+| First Render start logs `constraint "uk..." of relation "users" does not exist, skipping` | Harmless: Hibernate drops-if-exists before creating its unique constraints on an empty database |
+| `FRONTEND/api/auth/config` returns 404 | `BACKEND_URL` is missing, or was added without a **Redeploy** (it's read at build time) |
+| Render has no memory graph | The free plan doesn't show metrics. Watch Logs for `OutOfMemoryError` / `exited with code 137`, especially while indexing |
 | GitHub says "redirect_uri is not associated with this application" | OAuth app callback ≠ `GITHUB_REDIRECT_URI`. They must match exactly |
 | After GitHub sign-in you land back on `/login?error=...` | `FRONTEND_URL` or `GITHUB_REDIRECT_URI` points at the wrong domain |
 | Owner sign-in works but there's no Sync/Index | Your username isn't in `DEMO_ADMIN_GITHUB_USERNAMES` (it's case-insensitive) |
