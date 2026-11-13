@@ -116,7 +116,7 @@ const LoginContent = () => {
                 <AlertTitle>Waking up the server…</AlertTitle>
                 <AlertDescription>
                   This demo runs on free hosting that sleeps when idle. The first
-                  load can take about a minute.
+                  load can take 1–2 minutes.
                 </AlertDescription>
               </Alert>
             )}

@@ -72,7 +72,7 @@ export function useDemoLogin() {
 
 /**
  * True once `active` has stayed true for `delayMs`. Used to explain slow first loads:
- * the free backend sleeps when idle and takes about a minute to wake up.
+ * the free backend sleeps when idle and takes 1–2 minutes to wake up (Spring starts in ~90s on Render free).
  */
 export function useIsSlow(active: boolean, delayMs = 4000) {
   const [slow, setSlow] = useState(false);

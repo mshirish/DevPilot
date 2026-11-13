@@ -25,8 +25,8 @@ export function RequireAuth({ children }: { children: React.ReactNode }) {
           <p className="text-sm">Loading your workspace…</p>
           {isWaking && (
             <p className="max-w-xs text-center text-xs">
-              The free server is waking up from sleep. This can take about a
-              minute.
+              The free server is waking up from sleep. This can take 1–2
+              minutes.
             </p>
           )}
         </div>
